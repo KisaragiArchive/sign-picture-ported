@@ -2,11 +2,11 @@ package net.fabricmc.example;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRenderer;
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 import net.fabricmc.fabric.impl.client.rendering.BuiltinItemRendererRegistryImpl;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.client.render.model.json.ModelTransformation;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.CompoundTag;
 import org.apache.logging.log4j.LogManager;
@@ -31,7 +31,8 @@ public class SignPictureReloaded implements ModInitializer, ClientModInitializer
         try {
             Field defaultRendererField = BuiltinItemRendererRegistryImpl.class.getDeclaredField("RENDERERS");
             @SuppressWarnings("unchecked")
-            Map<Item, BuiltinItemRenderer> defaultRenderers = (Map<Item, BuiltinItemRenderer>) defaultRendererField.get(/* IT'S STATIC */ null);
+            Map<Item, BuiltinItemRendererRegistry.DynamicItemRenderer> defaultRenderers = (Map<Item, BuiltinItemRendererRegistry.DynamicItemRenderer>)
+                    defaultRendererField.get(/* IT'S STATIC */ null);
             Set<Item> signItems = Stream.of(
                     Blocks.ACACIA_SIGN,
                     Blocks.BIRCH_SIGN,
@@ -45,16 +46,17 @@ public class SignPictureReloaded implements ModInitializer, ClientModInitializer
                     .map(Block::asItem)
                     .collect(Collectors.toSet());
             signItems.forEach(sign -> {
-                BuiltinItemRenderer defaultRenderer = defaultRenderers.get(sign);
+                BuiltinItemRendererRegistry.DynamicItemRenderer defaultRenderer = defaultRenderers.get(sign);
                 defaultRenderers.remove(sign);
-                birr.register(sign, (itemStack, matrixStack, vertexConsumerProvider, i, i1) -> {
+                birr.register(sign, (itemStack, mode, matrixStack, vertexConsumerProvider, i, i1) -> {
                     CompoundTag tag = itemStack.getTag();
                     if (tag == null || !tag.contains("line1") || itemStack.isInFrame()) {
                         // default to built-in renderer
-                        defaultRenderer.render(itemStack, matrixStack, vertexConsumerProvider, i, i1);
+                        defaultRenderer.render(itemStack, ModelTransformation.Mode.GUI, matrixStack, vertexConsumerProvider, i, i1);
                     }
                     // DO NOTHING, SO WE CAN SEE NOTHING.
                 });
+
             });
         } catch (Exception e) {
             throw new RuntimeException(e);
