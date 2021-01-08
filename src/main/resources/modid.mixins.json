@@ -3,9 +3,10 @@
   "package": "net.fabricmc.example.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "BlockEntityMixin",
+    "SignBlockEntityRenderMixin"
   ],
   "client": [
-    "ExampleMixin"
   ],
   "injectors": {
     "defaultRequire": 1
