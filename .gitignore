@@ -15,3 +15,10 @@ out/
 
 run/
 minecraft/
+
+# building
+dependency/
+
+# dumps
+*.class
+*.log
