@@ -1,8 +1,7 @@
-package com.github.hitsound.spp;
+package com.github.kisaragieffective.signpictureported;
 
 import java.util.Optional;
 import java.util.regex.MatchResult;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ParseResult {

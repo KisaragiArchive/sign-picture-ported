@@ -1,7 +1,7 @@
-package com.github.hitsound.spp.mixin;
+package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.hitsound.spp.SignPicturePorted;
-import com.github.hitsound.spp.InternalSpecialUtility;
+import com.github.kisaragieffective.signpictureported.SignPicturePorted;
+import com.github.kisaragieffective.signpictureported.InternalSpecialUtility;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SignBlock;

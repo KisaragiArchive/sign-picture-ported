@@ -1,4 +1,4 @@
-package com.github.hitsound.spp;
+package com.github.kisaragieffective.signpictureported;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;

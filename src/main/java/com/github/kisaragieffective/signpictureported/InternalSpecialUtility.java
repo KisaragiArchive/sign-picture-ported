@@ -1,4 +1,4 @@
-package com.github.hitsound.spp;
+package com.github.kisaragieffective.signpictureported;
 
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.nbt.CompoundTag;

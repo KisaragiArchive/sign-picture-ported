@@ -1,6 +1,6 @@
-package com.github.hitsound.spp.mixin;
+package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.hitsound.spp.SignPicturePorted;
+import com.github.kisaragieffective.signpictureported.SignPicturePorted;
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 import net.fabricmc.fabric.impl.client.rendering.BuiltinItemRendererRegistryImpl;
 import net.minecraft.block.Block;

@@ -1,16 +1,31 @@
-# Fabric Example Mod - Kotlin
+# SignPicturePorted
+This mod is a ported version of https://github.com/Team-Fruit/SignPicture.
 
-## Setup
+This mod supports only fabric currently.
 
-0. Create a new mod repository by pressing the "Use this template" button and clone the created repository.
+This mod is tested on 1.16.x. Assuming working on other versions.
 
-1. Import build.gradle file with IntelliJ IDEA
+## Feature
+* Handles original syntax
 
-2. Edit build.gradle and mod.json to suit your needs.
-    * The "mixins" object can be removed from mod.json if you do not need to use mixins.
-    * Please replace all occurences of "modid" with your own mod ID - sometimes, a different string may also suffice.
-3. Run!
+## Building
+...
 
-## License
+## LICENSE
+Files under `/src` is under MIT License:
+```
+Copyright 2021 KisaragiEffective, HitSound
 
-This template is available under the CC0 license. Feel free to learn from it and incorporate it in your own projects.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+README.md (yes, you are reading this file) is under CC0, other files are under 
+
+## TODO
+* Scaling, offset
+* GUI
+* Key binding

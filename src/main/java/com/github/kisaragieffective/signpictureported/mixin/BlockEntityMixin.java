@@ -1,6 +1,6 @@
-package com.github.hitsound.spp.mixin;
+package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.hitsound.spp.InternalSpecialUtility;
+import com.github.kisaragieffective.signpictureported.InternalSpecialUtility;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SignBlock;
 import net.minecraft.block.WallSignBlock;
@@ -8,7 +8,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.LiteralText;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;

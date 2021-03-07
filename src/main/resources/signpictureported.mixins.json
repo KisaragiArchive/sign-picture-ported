@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.github.hitsound.spp.mixin",
+  "package": "com.github.kisaragieffective.signpictureported.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
     "BlockEntityMixin",

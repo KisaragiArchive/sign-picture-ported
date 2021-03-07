@@ -15,9 +15,7 @@ out/
 
 run/
 minecraft/
-
-# building
-dependency/
+remappedSrc/
 
 # dumps
 *.class

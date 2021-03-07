@@ -19,11 +19,11 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.github.hitsound.spp.SignPicturePorted"
+      "com.github.kisaragieffective.signpictureported.SignPicturePorted"
     ],
     "client": [
-      "com.github.hitsound.spp.SignPicturePorted",
-      "com.github.hitsound.spp.KeyBindingConfig"
+      "com.github.kisaragieffective.signpictureported.SignPicturePorted",
+      "com.github.kisaragieffective.signpictureported.KeyBindingConfig"
     ]
   },
   "mixins": [
