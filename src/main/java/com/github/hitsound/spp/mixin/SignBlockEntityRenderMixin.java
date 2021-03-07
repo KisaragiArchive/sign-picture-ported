@@ -1,7 +1,8 @@
-package net.fabricmc.example.mixin;
+package com.github.hitsound.spp.mixin;
 
-import net.fabricmc.example.InternalSpecialUtility;
-import net.fabricmc.example.SignPictureReloaded;
+import com.github.hitsound.spp.SignPicturePorted;
+import com.github.hitsound.spp.InternalSpecialUtility;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SignBlock;
 import net.minecraft.block.WallSignBlock;
@@ -16,7 +17,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Quaternion;
-import org.apache.logging.log4j.LogManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,14 +30,13 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Mixin(SignBlockEntityRenderer.class)
 public class SignBlockEntityRenderMixin {
     private final Map<URL, NativeImageBackedTexture> correspond = new HashMap<>();
     private static final MinecraftClient CLIENT = MinecraftClient.getInstance();
     private final Set<String> invalidURL = new HashSet<>();
-    private final Set<String> notFound = new HashSet<>();
+    private final Set<String> badURLs = new HashSet<>();
     private Map<URL, NativeImageBackedTexture> flippedCache = new HashMap<>();
 
     private static float getSignRotation(SignBlockEntity sbe) {
@@ -73,28 +72,34 @@ public class SignBlockEntityRenderMixin {
         //matrices.push();
         List<String> x = InternalSpecialUtility.getPlaintextLines(signBlockEntity);
         String specs = String.join("", x);
+        // BlockPos pos = signBlockEntity.getPos();
+        // SignPicturePorted.LOGGER.info("{ pos: " + pos + ", specs: " + specs + " }");
         boolean isURLSpec = specs.startsWith("#$");
         boolean isTextureSpec = specs.startsWith("!");
         if (!isURLSpec && !isTextureSpec) {
             return;
         }
 
+        // SignPicturePorted.LOGGER.info("matched");
+
         if (isURLSpec) {
             // always start with "#$"
             int confBegin = specs.indexOf("{");
-            SignPictureReloaded.LOGGER.info("conf start:" + confBegin);
-            String spec = confBegin >= 0 ? specs.substring(2, confBegin) : specs.substring(2);
-            SignPictureReloaded.LOGGER.info("spec:" + spec);
-            if (invalidURL.contains(spec)) {
+            // SignPicturePorted.LOGGER.debug("conf start:" + confBegin);
+            String urlFlag = confBegin >= 0 ? specs.substring(2, confBegin) : specs.substring(2);
+            if (invalidURL.contains(urlFlag)) {
                 return;
             }
 
+            // String conf = confBegin >= 0 ? specs.substring(confBegin) : "";
+            // SignPicturePorted.LOGGER.info("fragment:" + urlFlag);
+
             URL parsedURL;
             try {
-                parsedURL = new URL("https://" + spec);
+                parsedURL = new URL(urlFlag.startsWith("http://") || urlFlag.startsWith("https://") ? urlFlag : "https://" + urlFlag);
             } catch (MalformedURLException | IllegalArgumentException e) {
                 // Adding IllegalArgumentException for sun.net.spi.DefaultProxySelector.select
-                invalidURL.add(spec);
+                invalidURL.add(urlFlag);
                 return;
             }
 
@@ -109,7 +114,7 @@ public class SignBlockEntityRenderMixin {
             final boolean isStand = bs.getBlock() instanceof SignBlock;
             final boolean isOnWall = bs.getBlock() instanceof WallSignBlock;
             if (!isStand && !isOnWall) {
-                SignPictureReloaded.LOGGER.warn("Unknown sign-like block");
+                SignPicturePorted.LOGGER.warn("Unknown sign-like block");
                 return;
             }
 
@@ -155,7 +160,8 @@ public class SignBlockEntityRenderMixin {
             double offsetX = 0.0;
             double offsetY = 0.0;
             double offsetZ = 0.0;
-            matrices.translate(offsetX, offsetY, offsetZ);
+            // against Z-fighting
+            matrices.translate(offsetX, offsetY, offsetZ + 0.001);
             float scaleX = 1.0F;
             float scaleY = 1.0F;
             float scaleZ = 1.0F;
@@ -185,10 +191,13 @@ public class SignBlockEntityRenderMixin {
     }
 
     private void drawImage(MatrixStack matrices) {
+        // depth test resolves z-issue
+        RenderSystem.enableDepthTest();
         DrawableHelper.drawTexture(matrices, 0, 0, 0, 0, 0, 1, 1, 1, 1);
+        RenderSystem.disableDepthTest();
     }
 
-    private static Map<NativeImageBackedTexture, Identifier> identifierMap = new HashMap<>();
+    private static final Map<NativeImageBackedTexture, Identifier> identifierMap = new HashMap<>();
     private static Identifier newIdentifierOrCached(NativeImageBackedTexture nibt) {
         if (identifierMap.containsKey(nibt)) {
             return identifierMap.get(nibt);
@@ -217,12 +226,14 @@ public class SignBlockEntityRenderMixin {
         }
 
         // If we don't do that, the game will be frozen
-        if (notFound.contains(url.toString())) {
+        if (badURLs.contains(url.toString())) {
             return null;
         }
+        /*
         System.out.println(flippedCache.entrySet().parallelStream()
                 .map(x -> x.getKey() + ": " + x.getValue())
                 .collect(Collectors.joining(", ", "[", "]")));
+        */
         NativeImageBackedTexture returning;
         {
             InputStream httpBuffer;
@@ -231,18 +242,30 @@ public class SignBlockEntityRenderMixin {
                 if (url.getHost() == null || url.getProtocol() == null) return null;
                 huc1 = cast(url.openConnection());
                 huc1.connect();
-                if (huc1.getResponseCode() != 200) {
-                    notFound.add(url.toString());
-                    throw new IOException("Respond code is Not ok");
+                final int code = huc1.getResponseCode();
+                if (code == 200) {
+                    // OK: Do nothing
+                } else if (code == 301 || code == 302 || code == 307 || code == 308) {
+                    // TODO handle this
+                    throw new IOException("Handling Redirection is not implemented");
+                } else {
+                    throw new IOException("URL connection failed: {code: " + code + "}");
                 }
-                // MIME type
+
+                /*
+                Check response MIME type, these types will be accepted:
+                    * image/png
+                    * image/jpg
+                 */
                 String mimeType = huc1.getContentType();
+
                 if (!mimeType.startsWith("image/")) {
                     throw new IOException("Content-Type " + mimeType + " is not image");
                 }
                 httpBuffer = huc1.getInputStream();
             } catch (IllegalArgumentException | IOException e) {
-                LogManager.getLogger().catching(e);
+                SignPicturePorted.LOGGER.error("Exception caught", e);
+                badURLs.add(url.toString());
                 return null;
             }
 
@@ -250,15 +273,14 @@ public class SignBlockEntityRenderMixin {
             InputStream bufferedHttpIS = new BufferedInputStream(httpBuffer);
             try {
                 mayImage = NativeImage.read(bufferedHttpIS);
-            } catch (IOException e) {
-                System.out.println("Error during getting NativeImage" + ": " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            } catch (IOException | UnsupportedOperationException e) {
+                SignPicturePorted.LOGGER.error("During get NativeImage", e);
                 return null;
             }
 
             returning = new NativeImageBackedTexture(mayImage);
             correspond.put(url, returning);
             // TODO: Flipped Image Cache
-
         }
 
         return returning;

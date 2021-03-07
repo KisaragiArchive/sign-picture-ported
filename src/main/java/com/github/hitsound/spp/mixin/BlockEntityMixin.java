@@ -1,15 +1,13 @@
-package net.fabricmc.example.mixin;
+package com.github.hitsound.spp.mixin;
 
-import net.fabricmc.example.InternalSpecialUtility;
+import com.github.hitsound.spp.InternalSpecialUtility;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SignBlock;
 import net.minecraft.block.WallSignBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.client.render.Tessellator;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.text.LiteralText;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -22,7 +20,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.stream.Collectors;
 
 @Mixin(BlockEntity.class)
 public abstract class BlockEntityMixin {
@@ -64,11 +61,13 @@ public abstract class BlockEntityMixin {
             message = "Sign(" + this.pos + ") text is malformed url";
         }
 
+        /*
         if (editor != null) {
             editor.sendMessage(new LiteralText(message), false);
         } else {
             System.out.println("WARN: SignEditor(" + xxx.getPos() + ") was null");
         }
+         */
     }
 
 

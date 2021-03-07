@@ -1,10 +1,11 @@
 {
   "required": true,
-  "package": "net.fabricmc.example.mixin",
+  "package": "com.github.hitsound.spp.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
     "BlockEntityMixin",
-    "SignBlockEntityRenderMixin"
+    "SignBlockEntityRenderMixin",
+    "BIRRMixin"
   ],
   "client": [
   ],

@@ -1,4 +1,4 @@
-package net.fabricmc.example;
+package com.github.hitsound.spp;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -11,12 +11,12 @@ import org.lwjgl.glfw.GLFW;
 public class KeyBindingConfig implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        SignPictureReloaded.LOGGER.info("Key config...");
+        SignPicturePorted.LOGGER.info("Key config...");
         KeyBinding openGUI = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key." + SignPictureReloaded.MOD_ID + ".gui",
+                "key." + SignPicturePorted.MOD_ID + ".gui",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_KP_DECIMAL,
-                "category." + SignPictureReloaded.MOD_ID + ".gui"
+                "category." + SignPicturePorted.MOD_ID + ".gui"
         ));
 
         ClientTickCallback.EVENT.register(client -> {
@@ -24,6 +24,6 @@ public class KeyBindingConfig implements ClientModInitializer {
                 client.player.sendMessage(new LiteralText("Key 1 was pressed!"), false);
             }
         });
-        SignPictureReloaded.LOGGER.info("successful");
+        SignPicturePorted.LOGGER.info("successful");
     }
 }

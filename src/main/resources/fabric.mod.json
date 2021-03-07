@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "signpictureported",
+  "id": "signpictutureported",
   "version": "${version}",
 
   "name": "SignPicture Ported For Fabric",
@@ -9,7 +9,7 @@
     "HitSound"
   ],
   "contact": {
-    "homepage": "https://hit-sound.github.io/",
+    "homepage": "https://hitsound.github.io/",
     "sources": "https://github.com/HIT-SOUND/SignPicturePorted-Fabric"
   },
 
@@ -19,14 +19,15 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "net.fabricmc.example.SignPictureReloaded"
+      "com.github.hitsound.spp.SignPicturePorted"
     ],
     "client": [
-      "net.fabricmc.example.KeyBindingConfig"
+      "com.github.hitsound.spp.SignPicturePorted",
+      "com.github.hitsound.spp.KeyBindingConfig"
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "signpictureported.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.8.7",
