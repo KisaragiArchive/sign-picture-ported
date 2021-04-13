@@ -1,4 +1,4 @@
-package com.github.kisaragieffective.signpictureported;
+package com.github.kisaragieffective.signpictureported.api;
 
 import java.util.OptionalDouble;
 import java.util.function.Function;
@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 import static com.github.kisaragieffective.signpictureported.Functions.compose;
 import static com.github.kisaragieffective.signpictureported.Functions.switchBasedNullish;
 
-public final class ParseResult {
+public final class DisplayConfigurationParseResult {
     public final double offsetRight;
     public final double offsetUp;
     public final double offsetDepth;
@@ -18,29 +18,44 @@ public final class ParseResult {
     public final double scaleX;
     public final double scaleY;
 
-    public ParseResult(OptionalDouble offsetRight, OptionalDouble offsetUp, OptionalDouble offsetDepth,
-                       OptionalDouble rotateX, OptionalDouble rotateY, OptionalDouble rotateZ,
-                       OptionalDouble scaleX, OptionalDouble scaleY) {
-        this.offsetRight = offsetRight.orElse(0.0);
-        this.offsetUp = offsetUp.orElse(0.0);
-        this.offsetDepth = offsetDepth.orElse(0.0);
-        this.rotateX = rotateX.orElse(0.0);
-        this.rotateY = rotateY.orElse(0.0);
-        this.rotateZ = rotateZ.orElse(0.0);
-        this.scaleX = scaleX.orElse(1.0);
-        this.scaleY = scaleY.orElse(1.0);
+    public DisplayConfigurationParseResult(OptionalDouble offsetRight, OptionalDouble offsetUp, OptionalDouble offsetDepth,
+                                           OptionalDouble rotateX, OptionalDouble rotateY, OptionalDouble rotateZ,
+                                           OptionalDouble scaleX, OptionalDouble scaleY) {
+        this(
+                offsetRight.orElse(0.0),
+                offsetUp.orElse(0.0),
+                offsetDepth.orElse(0.0),
+                rotateX.orElse(0.0),
+                rotateY.orElse(0.0),
+                rotateZ.orElse(0.0),
+                scaleX.orElse(1.0),
+                scaleY.orElse(1.0)
+        );
     }
 
-    public ParseResult(OptionalDouble offsetRight, OptionalDouble offsetUp, OptionalDouble offsetDepth,
-                       OptionalDouble rotateX, OptionalDouble rotateY, OptionalDouble rotateZ,
-                       OptionalDouble scale) {
+    public DisplayConfigurationParseResult(double offsetRight, double offsetUp, double offsetDepth,
+                                           double rotateX, double rotateY, double rotateZ,
+                                           double scaleX, double scaleY) {
+        this.offsetRight = offsetRight;
+        this.offsetUp = offsetUp;
+        this.offsetDepth = offsetDepth;
+        this.rotateX = rotateX;
+        this.rotateY = rotateY;
+        this.rotateZ = rotateZ;
+        this.scaleX = scaleX;
+        this.scaleY = scaleY;
+    }
+
+    public DisplayConfigurationParseResult(OptionalDouble offsetRight, OptionalDouble offsetUp, OptionalDouble offsetDepth,
+                                           OptionalDouble rotateX, OptionalDouble rotateY, OptionalDouble rotateZ,
+                                           OptionalDouble scale) {
         this(offsetRight, offsetUp, offsetDepth, rotateX, rotateY, rotateZ, scale, scale);
     }
 
     /**
      * ParseResult which has all fallback parameters
      */
-    public static final ParseResult DEFAULT = new ParseResult(
+    public static final DisplayConfigurationParseResult DEFAULT = new DisplayConfigurationParseResult(
             OptionalDouble.empty(),
             OptionalDouble.empty(),
             OptionalDouble.empty(),
@@ -64,7 +79,7 @@ public final class ParseResult {
      * @param from string to parse
      * @return parse result
      */
-    public static ParseResult parse(String from) {
+    public static DisplayConfigurationParseResult parse(String from) {
         Matcher m = PATTERN
                 .matcher(from);
         if (m.matches()) {
@@ -91,9 +106,9 @@ public final class ParseResult {
             final OptionalDouble offsetRight = extractor.apply("r");
             final OptionalDouble offsetUp = extractor.apply("u");
             final OptionalDouble offsetDepth = extractor.apply("d");
-            return new ParseResult(offsetRight, offsetUp, offsetDepth, rotateX, rotateY, rotateZ, scaleX, scaleY);
+            return new DisplayConfigurationParseResult(offsetRight, offsetUp, offsetDepth, rotateX, rotateY, rotateZ, scaleX, scaleY);
         } else {
-            return ParseResult.DEFAULT;
+            return DisplayConfigurationParseResult.DEFAULT;
         }
     }
 }
