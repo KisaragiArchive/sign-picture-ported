@@ -8,7 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class SignPicturePorted implements ModInitializer, ClientModInitializer, DedicatedServerModInitializer {
-    public static final String MOD_ID = "signpictuported";
+    public static final String MOD_ID = "signpictureported";
     public static final Logger LOGGER = LogManager.getLogger();
     @Override
     public void onInitialize() {
