@@ -1,7 +1,9 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.SignPicturePorted;
 import com.github.kisaragieffective.signpictureported.InternalSpecialUtility;
+import com.github.kisaragieffective.signpictureported.ParseResult;
+import com.github.kisaragieffective.signpictureported.SignPicturePorted;
+import com.github.kisaragieffective.signpictureported.TextureFlipper;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SignBlock;
@@ -17,7 +19,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Quaternion;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,6 +27,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -33,11 +35,12 @@ import java.util.*;
 
 @Mixin(SignBlockEntityRenderer.class)
 public class SignBlockEntityRenderMixin {
-    private final Map<URL, NativeImageBackedTexture> correspond = new HashMap<>();
+    // TODO out-memory cache
+    private final Map<URL, SoftReference<NativeImageBackedTexture>> correspond = new HashMap<>();
     private static final MinecraftClient CLIENT = MinecraftClient.getInstance();
     private final Set<String> invalidURL = new HashSet<>();
     private final Set<String> badURLs = new HashSet<>();
-    private Map<URL, NativeImageBackedTexture> flippedCache = new HashMap<>();
+    private Map<URL, SoftReference<NativeImageBackedTexture>> flippedCache = new HashMap<>();
 
     private static float getSignRotation(SignBlockEntity sbe) {
         BlockState blockState = sbe.getCachedState();
@@ -52,18 +55,48 @@ public class SignBlockEntityRenderMixin {
         return rotateAngle;
     }
 
-    private static void color(float r, float g, float b) {
-        GL11.glColor3f(r, g, b);
-    }
-
-    private static void selectTexture(Identifier id) {
+    private static void selectTexture(NativeImageBackedTexture nibt) {
+        if (nibt == null) return;
+        Identifier id = newIdentifierOrCached(nibt);
         Objects.requireNonNull(CLIENT.getTextureManager().getTexture(id)).bindTexture();
     }
 
-    private static void selectTexture(NativeImageBackedTexture nibt) {
-        if (nibt == null) return;
-        Identifier ident = newIdentifierOrCached(nibt);
-        selectTexture(ident);
+    /**
+     * SignBlockEntityに応じたMatrixStackの調整を入れる
+     * @param matrices
+     * @param signBlockEntity
+     */
+    private static void fixMatrices(MatrixStack matrices, SignBlockEntity signBlockEntity) {
+        final boolean isStand = signBlockEntity.getCachedState().getBlock() instanceof SignBlock;
+        final boolean isOnWall = signBlockEntity.getCachedState().getBlock() instanceof WallSignBlock;
+        if (isStand) {
+            matrices.translate(0.5, 0.5, 0.5);
+            // 左右反転するなら逆手に取れば良いのでは？
+            matrices.scale(1F, -1F, 1F);
+            // 角度補正
+            float rotateAngle = getSignRotation(signBlockEntity);
+
+            matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(rotateAngle));
+            matrices.translate(-0.5, -0.5, 0);
+        } else if (isOnWall) {
+            matrices.scale(1F, -1F, 1F);
+            // 下にずれる問題の修正
+            matrices.translate(0.0, -1.0, 0.0);
+            float rotateAngle = getSignRotation(signBlockEntity);
+            final float zvz = 0.0001f;
+            // todo: 力技
+            if (Math.abs(rotateAngle - 0f) < zvz) {
+                // nothing to do
+            } else if (Math.abs(rotateAngle - 90.0f) < zvz) {
+                matrices.translate(1, 0, 0);
+            } else if (Math.abs(rotateAngle - 180.0f) < zvz) {
+                matrices.translate(1, 0, 1);
+            } else if (Math.abs(rotateAngle - 270.0f) < zvz) {
+                matrices.translate(0, 0, 1);
+            }
+
+            matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(360 - rotateAngle));
+        }
     }
     @Inject(at = @At("HEAD"), method = "render", cancellable = true)
     private void injectRender(SignBlockEntity signBlockEntity, float f,
@@ -105,8 +138,7 @@ public class SignBlockEntityRenderMixin {
 
             NativeImageBackedTexture nibt = registerFrom(parsedURL);
             if (nibt == null) return;
-            Identifier ident = newIdentifierOrCached(nibt);
-            selectTexture(ident);
+            selectTexture(nibt);
             NativeImage img = nibt.getImage();
             Objects.requireNonNull(img);
             // NOTE テクスチャ向いてるほうがZ-
@@ -121,71 +153,34 @@ public class SignBlockEntityRenderMixin {
             matrices.push();
             // color(1, 0, 1);
             //
-            {
-                if (isStand) {
-                    matrices.translate(0.5, 0.5, 0.5);
-                    // 左右反転するなら逆手に取れば良いのでは？
-                    matrices.scale(1F, -1F, 1F);
-                    // 角度補正
-                    float rotateAngle = getSignRotation(signBlockEntity);
-
-                    matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(rotateAngle));
-                    matrices.translate(-0.5, -0.5, 0);
-                } else {
-                    matrices.scale(1F, -1F, 1F);
-                    // 下にずれる問題の修正
-                    matrices.translate(0.0, -1.0, 0.0);
-                    float rotateAngle = getSignRotation(signBlockEntity);
-                    final float zvz = 0.0001f;
-                    // todo: 力技
-                    if (Math.abs(rotateAngle - 0f) < zvz) {
-                        // nothing to do
-                    } else if (Math.abs(rotateAngle - 90.0f) < zvz) {
-                        matrices.translate(1, 0, 0);
-                    } else if (Math.abs(rotateAngle - 180.0f) < zvz) {
-                        matrices.translate(1, 0, 1);
-                    } else if (Math.abs(rotateAngle - 270.0f) < zvz) {
-                        matrices.translate(0, 0, 1);
-                    }
-
-                    matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(360 - rotateAngle));
-                }
-            }
+            fixMatrices(matrices, signBlockEntity);
 
             // TODO make it change-able
-            float rotateX = 0.0F;
-            float rotateY = 0.0F;
-            float rotateZ = 0.0F;
+            final ParseResult pr = ParseResult.DEFAULT;
+            float rotateX = (float) pr.rotateX;
+            float rotateY = (float) pr.rotateY;
+            float rotateZ = (float) pr.rotateZ;
             matrices.multiply(new Quaternion(rotateX, rotateY, rotateZ, true));
-            double offsetX = 0.0;
-            double offsetY = 0.0;
-            double offsetZ = 0.0;
+            double offsetUp = pr.offsetUp;
+            double offsetRight = pr.offsetRight;
+            double offsetDepth = pr.offsetDepth;
             // against Z-fighting
-            matrices.translate(offsetX, offsetY, offsetZ + 0.001);
-            float scaleX = 1.0F;
-            float scaleY = 1.0F;
-            float scaleZ = 1.0F;
-            matrices.scale(scaleX, scaleY, scaleZ);
+            matrices.translate(offsetRight, offsetUp, offsetDepth + 0.001);
+            float scaleX = (float) pr.scaleX;
+            float scaleY = (float) pr.scaleY;
+            matrices.scale(scaleX, scaleY, 1.0F);
             drawImage(matrices);
-            // 左右反転 - 多分不可能
 
+            // 左右反転したテクスチャを裏側に表示させる
+            selectTexture(new NativeImageBackedTexture(TextureFlipper.flipHorizontal(img)));
+            matrices.translate(scaleX, 0.0, 0.0);
+            matrices.multiply(new Quaternion(0.0F, 180.0F, 0.0F, true));
+            drawImage(matrices);
             matrices.pop();
-            // TODO: 左右反転したテクスチャを裏側に表示させる
-            /*
-            color(0, 1, 1);
-            selectTexture(flippedCache.get(parsedURL));
-            // matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(180f));
-            matrices.translate(0, 0, 1);
-            drawImage(matrices);
-            */
-
             // 元々のモデルを黙らせる
             defModelRender.cancel();
-            // GL11.glEnable(GL11.GL_BLEND);
-
-            //matrices.pop();
         } else {
-            // is texture
+            // TODO: texture
             String spec = specs.substring(1);
         }
     }
@@ -211,9 +206,17 @@ public class SignBlockEntityRenderMixin {
     private <E> E TODO() { throw new RuntimeException(); }
 
     private void invalidate() {
-        correspond.values().forEach(x -> x.close());
+        correspond.values()
+                .stream()
+                .map(SoftReference::get)
+                .filter(Objects::nonNull)
+                .forEach(NativeImageBackedTexture::close);
         correspond.clear();
-        flippedCache.values().forEach(x -> x.close());
+        flippedCache.values()
+                .stream()
+                .map(SoftReference::get)
+                .filter(Objects::nonNull)
+                .forEach(NativeImageBackedTexture::close);
         flippedCache.clear();
         identifierMap.keySet().forEach(x -> x.close());
         identifierMap.clear();
@@ -221,8 +224,8 @@ public class SignBlockEntityRenderMixin {
     }
 
     private NativeImageBackedTexture registerFrom(URL url) {
-        if (correspond.containsKey(url)) {
-            return correspond.get(url);
+        if (correspond.containsKey(url) && correspond.get(url).get() != null) {
+            return correspond.get(url).get();
         }
 
         // If we don't do that, the game will be frozen
@@ -241,13 +244,13 @@ public class SignBlockEntityRenderMixin {
                 HttpURLConnection huc1;
                 if (url.getHost() == null || url.getProtocol() == null) return null;
                 huc1 = cast(url.openConnection());
+                huc1.setInstanceFollowRedirects(true);
                 huc1.connect();
                 final int code = huc1.getResponseCode();
                 if (code == 200) {
                     // OK: Do nothing
-                } else if (code == 301 || code == 302 || code == 307 || code == 308) {
-                    // TODO handle this
-                    throw new IOException("Handling Redirection is not implemented");
+                } else if (code == 204) {
+                    throw new IOException("Nothing can't be rendered (HTTP 204)");
                 } else {
                     throw new IOException("URL connection failed: {code: " + code + "}");
                 }
@@ -256,6 +259,7 @@ public class SignBlockEntityRenderMixin {
                 Check response MIME type, these types will be accepted:
                     * image/png
                     * image/jpg
+                    * image/xml+svg
                  */
                 String mimeType = huc1.getContentType();
 
@@ -274,13 +278,13 @@ public class SignBlockEntityRenderMixin {
             try {
                 mayImage = NativeImage.read(bufferedHttpIS);
             } catch (IOException | UnsupportedOperationException e) {
+                badURLs.add(url.toString());
                 SignPicturePorted.LOGGER.error("During get NativeImage", e);
                 return null;
             }
 
             returning = new NativeImageBackedTexture(mayImage);
-            correspond.put(url, returning);
-            // TODO: Flipped Image Cache
+            correspond.put(url, new SoftReference<>(returning));
         }
 
         return returning;
