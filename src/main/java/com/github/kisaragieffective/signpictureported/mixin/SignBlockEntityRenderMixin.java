@@ -1,15 +1,7 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.InternalSpecialUtility;
 import com.github.kisaragieffective.signpictureported.*;
 import com.github.kisaragieffective.signpictureported.api.DisplayConfigurationParseResult;
-import com.github.kisaragieffective.signpictureported.InternalSpecialUtility;
-import com.github.kisaragieffective.signpictureported.ParseResult;
-import com.github.kisaragieffective.signpictureported.SignPicturePorted;
-import com.github.kisaragieffective.signpictureported.TextureFlipper;
-import net.minecraft.world.LightType;
-import org.jetbrains.annotations.Contract;
-import com.github.kisaragieffective.signpictureported.SignPicturePorted;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -18,6 +10,7 @@ import net.minecraft.block.WallSignBlock;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.block.entity.SignBlockEntityRenderer;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
@@ -26,10 +19,12 @@ import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Quaternion;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.world.LightType;
+import org.jetbrains.annotations.Contract;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
@@ -190,7 +185,7 @@ public class SignBlockEntityRenderMixin {
             fixMatrices(matrices, signBlockEntity);
 
             // TODO make it configurable
-            final ParseResult pr = ParseResult.DEFAULT;
+            final DisplayConfigurationParseResult pr = DisplayConfigurationParseResult.DEFAULT;
             float rotateX = (float) pr.rotateX;
             float rotateY = (float) pr.rotateY;
             float rotateZ = (float) pr.rotateZ;
@@ -199,7 +194,7 @@ public class SignBlockEntityRenderMixin {
             double offsetRight = pr.offsetRight;
             double offsetDepth = pr.offsetDepth;
             // against Z-fighting
-            matrices.translate(offsetRight, offsetUp, offsetDepth + 0.001);
+            matrices.translate(offsetRight, offsetUp, offsetDepth + EPS_D);
             float scaleX = (float) pr.scaleX;
             float scaleY = (float) pr.scaleY;
             matrices.scale(scaleX, scaleY, 1.0F);
@@ -207,7 +202,7 @@ public class SignBlockEntityRenderMixin {
             drawImage(matrices);
 
             // 左右反転したテクスチャを裏側に表示させる
-            selectTexture(new NativeImageBackedTexture(TextureFlipper.flipHorizontal(img)));
+            selectTexture(new NativeImageBackedTexture(TextureFlipper.flipHorizontal(nibt.getImage())));
             matrices.translate(scaleX, 0.0, 0.0);
             matrices.multiply(new Quaternion(0.0F, 180.0F, 0.0F, true));
             drawImage(matrices);
