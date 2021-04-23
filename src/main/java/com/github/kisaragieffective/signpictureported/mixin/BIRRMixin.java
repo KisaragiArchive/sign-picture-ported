@@ -38,6 +38,7 @@ public abstract class BIRRMixin {
 
     @Inject(at = @At("TAIL"), method = "<init>")
     private void initializerTail(CallbackInfo ci) {
+        // todo not working.
         SignPicturePorted.LOGGER.info("Start overriding vanilla sign renderers...");
         Set<Item> signItems = Stream.of(
                 Blocks.ACACIA_SIGN,
@@ -58,21 +59,18 @@ public abstract class BIRRMixin {
         }
         RENDERERS = defaultRenderers;
 
-        final Map<Item, BuiltinItemRendererRegistry.DynamicItemRenderer> defRenderer =
-                Objects.requireNonNull(defaultRenderers, "defaultRenderers");
-        {
-            signItems.forEach(sign -> {
-                @Nullable
-                BuiltinItemRendererRegistry.DynamicItemRenderer defaultRenderer = defRenderer.get(sign);
-                BuiltinItemRendererRegistry.DynamicItemRenderer customRenderer = getRenderer(defaultRenderer);
-                SignPicturePorted.LOGGER.info("Overriding renderer: for:" + sign + ",render class:" + defaultRenderer);
+        final Map<Item, BuiltinItemRendererRegistry.DynamicItemRenderer> defRenderer = defaultRenderers;
+        signItems.forEach(sign -> {
+            @Nullable
+            BuiltinItemRendererRegistry.DynamicItemRenderer defaultRenderer = defRenderer.get(sign);
+            BuiltinItemRendererRegistry.DynamicItemRenderer customRenderer = getRenderer(defaultRenderer);
+            SignPicturePorted.LOGGER.info("Overriding renderer: for:" + sign + ",render class:" + defaultRenderer);
                 // defRenderer.remove(sign);
                 this.register(
                         Objects.requireNonNull(sign, "sign"),
                         Objects.requireNonNull(customRenderer, "customRender")
                 );
-            });
-        }
+        });
         RENDERERS = defRenderer;
         SignPicturePorted.LOGGER.info("Done");
     }
@@ -80,6 +78,7 @@ public abstract class BIRRMixin {
     @NotNull
     @Contract("_->new")
     private BuiltinItemRendererRegistry.DynamicItemRenderer getRenderer(BuiltinItemRendererRegistry.DynamicItemRenderer defaultRenderer) {
+        SignPicturePorted.LOGGER.info("called getRenderer in BIRRMixin");
         return (itemStack, mode, ms, vcp, i, i1) -> {
             SignPicturePorted.LOGGER.warn("Hi from BuiltinItemRendererRegistry.DynamicItemRenderer");
             CompoundTag tag = itemStack.getTag();
