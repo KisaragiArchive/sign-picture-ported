@@ -1,7 +1,6 @@
 package com.github.kisaragieffective.signpictureported;
 
 import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.client.texture.NativeImage;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.JsonHelper;
 
@@ -22,7 +21,7 @@ public class InternalSpecialUtility {
         ));
     }
 
-    public static <T> T dummy() {
+    public static <T> T never() {
         throw new AssertionError("This statement shouldn't reached!");
     }
 
@@ -51,34 +50,8 @@ public class InternalSpecialUtility {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Flip horizontally. This method is in-place.
-     * Converts
-     * <pre>
-     * 1 2 3
-     * 4 5 6
-     * 7 8 9
-     * </pre>
-     * to
-     * <pre>
-     * 3 2 1
-     * 6 5 4
-     * 9 8 7
-     * </pre>
-     * where 1 to 9 are its pixels.
-     * @param ni
-     * @return the flipped image
-     */
-    public static NativeImage mirrorHorizontally(NativeImage ni) {
-        for (int y = 0; y < ni.getHeight(); y++) {
-            for (int x = 0; x < ni.getWidth() / 2; x++) {
-                int color1 = ni.getPixelColor(x, y);
-                final int destX1 = ni.getWidth() - 1 - x;
-                int color2 = ni.getPixelColor(destX1, y);
-                ni.setPixelColor(destX1, y, color1);
-                ni.setPixelColor(x, y, color2);
-            }
-        }
-        return ni;
+    @SuppressWarnings("unchecked")
+    public static <T> T implicitCast(Object o) {
+        return (T) o;
     }
 }

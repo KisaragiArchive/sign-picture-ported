@@ -26,19 +26,21 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 
-import static com.github.kisaragieffective.signpictureported.InternalSpecialUtility.dummy;
+import static com.github.kisaragieffective.signpictureported.InternalSpecialUtility.implicitCast;
+import static com.github.kisaragieffective.signpictureported.InternalSpecialUtility.never;
 
 @Mixin(SignBlockEntityRenderer.class)
 public class SignBlockEntityRenderMixin {
@@ -280,7 +282,7 @@ public class SignBlockEntityRenderMixin {
             try {
                 HttpURLConnection huc1;
                 if (url.getHost() == null || url.getProtocol() == null) return null;
-                huc1 = cast(url.openConnection());
+                huc1 = implicitCast(url.openConnection());
                 huc1.setInstanceFollowRedirects(true);
                 huc1.connect();
                 final int code = huc1.getResponseCode();
