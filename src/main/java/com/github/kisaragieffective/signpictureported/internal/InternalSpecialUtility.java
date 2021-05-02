@@ -1,4 +1,4 @@
-package com.github.kisaragieffective.signpictureported;
+package com.github.kisaragieffective.signpictureported.internal;
 
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.nbt.CompoundTag;
@@ -19,6 +19,10 @@ public class InternalSpecialUtility {
                 dest.getString("Text3"),
                 dest.getString("Text4")
         ));
+    }
+
+    public static <T> T never() {
+        throw new AssertionError("This statement shouldn't reached!");
     }
 
     public static List<String> getPlaintextLines(SignBlockEntity sbe) {
@@ -44,5 +48,10 @@ public class InternalSpecialUtility {
                     return text;
                 })
                 .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T implicitCast(Object o) {
+        return (T) o;
     }
 }

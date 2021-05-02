@@ -1,22 +1,22 @@
 {
   "schemaVersion": 1,
-  "id": "signpictutureported",
+  "id": "signpictureported",
   "version": "${version}",
 
   "name": "SignPicture Ported For Fabric",
   "description": "Ported SignPicture for Fabric",
   "authors": [
-    "HitSound"
+    "HitSound",
+    "KisaragiEffective"
   ],
   "contact": {
-    "homepage": "https://hitsound.github.io/",
-    "sources": "https://github.com/HIT-SOUND/SignPicturePorted-Fabric"
+    "sources": "https://github.com/KisaragiEffective/SignPicturePorted"
   },
 
   "license": "CC0-1.0",
   "icon": "assets/modid/icon.png",
 
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
     "main": [
       "com.github.kisaragieffective.signpictureported.SignPicturePorted"
@@ -34,8 +34,5 @@
     "fabric": "*",
     "fabric-language-kotlin": "*",
     "minecraft": "1.16.x"
-  },
-  "suggests": {
-    "flamingo": "*"
   }
 }
