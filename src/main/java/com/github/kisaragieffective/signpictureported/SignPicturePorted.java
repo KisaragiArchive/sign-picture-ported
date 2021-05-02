@@ -10,6 +10,16 @@ import org.apache.logging.log4j.Logger;
 public class SignPicturePorted implements ModInitializer, ClientModInitializer, DedicatedServerModInitializer {
     public static final String MOD_ID = "signpictureported";
     public static final Logger LOGGER = LogManager.getLogger();
+    public static final boolean DEBUG = false;
+
+    static {
+        if (DEBUG) {
+            LOGGER.info("Hint: This build is DEBUG build.");
+            LOGGER.debug("If you can see this message, it's ok.");
+            LOGGER.info("Or else: logger can't log debug message.");
+        }
+    }
+
     @Override
     public void onInitialize() {
         LOGGER.info("SignPictureReloaded was loaded");

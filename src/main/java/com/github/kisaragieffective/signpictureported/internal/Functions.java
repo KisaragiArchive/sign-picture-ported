@@ -1,4 +1,4 @@
-package com.github.kisaragieffective.signpictureported;
+package com.github.kisaragieffective.signpictureported.internal;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,10 +21,10 @@ public final class Functions {
     public static <A, B, C> Function<? super A, ? extends C> compose(
             Function<? super A, ? extends B> ab, Function<? super B, ? extends C> bc
     ) {
-        return a -> bc.apply(ab.apply(a));
+        return ab.andThen(bc);
     }
 
-    public static <A, R> BiFunction<? super A, ?, ? extends R> _1(
+    public static <A, R> BiFunction<? super A, ? super Object, ? extends R> _1(
             Function<? super A, ? extends R> ar
     ) {
         return (a, o) -> ar.apply(a);

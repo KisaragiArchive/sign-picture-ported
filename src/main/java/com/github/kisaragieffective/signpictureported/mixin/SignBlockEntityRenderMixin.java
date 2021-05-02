@@ -1,7 +1,13 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.*;
+import com.github.kisaragieffective.signpictureported.ImageWrapper;
+import com.github.kisaragieffective.signpictureported.NativeImageFactory;
+import com.github.kisaragieffective.signpictureported.OutsideCache;
+import com.github.kisaragieffective.signpictureported.SignPicturePorted;
+import com.github.kisaragieffective.signpictureported.TextureFlipper;
 import com.github.kisaragieffective.signpictureported.api.DisplayConfigurationParseResult;
+import com.github.kisaragieffective.signpictureported.internal.ErrorOrValid;
+import com.github.kisaragieffective.signpictureported.internal.InternalSpecialUtility;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -26,11 +32,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -39,19 +40,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
-import static com.github.kisaragieffective.signpictureported.InternalSpecialUtility.implicitCast;
-import static com.github.kisaragieffective.signpictureported.InternalSpecialUtility.never;
+import static com.github.kisaragieffective.signpictureported.internal.InternalSpecialUtility.never;
+import static com.github.kisaragieffective.signpictureported.internal.WrapExceptions.wrapExceptionToUnchecked;
 
 @Mixin(SignBlockEntityRenderer.class)
 public class SignBlockEntityRenderMixin {
     // TODO out-memory cache
-    private final Map<URL, SoftReference<NativeImageBackedTexture>> correspond = new HashMap<>();
     private static final MinecraftClient CLIENT = MinecraftClient.getInstance();
-    private final Set<String> invalidURL = new HashSet<>();
-    private final Set<String> badURLs = new HashSet<>();
-    private final Map<URL, SoftReference<NativeImageBackedTexture>> flippedCache = new HashMap<>();
     private static final float EPS_F = 0.0001F;
-    private static final double EPS_D = 0.0000001;
     @Contract("_ -> fail")
     private static void notifyUnknownBlock(BlockPos pos) {
         SignPicturePorted.LOGGER.warn("Unknown sign-like block: " + pos);
@@ -72,13 +68,23 @@ public class SignBlockEntityRenderMixin {
             return rotateAngle;
         } else {
             notifyUnknownBlock(sbe.getPos());
-            return dummy();
+            return never();
         }
     }
 
-    private static void selectTexture(NativeImageBackedTexture nibt) {
+    private static void selectTexture(BlockPos pos, NativeImageBackedTexture nibt) {
         if (nibt == null) return;
-        Identifier id = newIdentifierOrCached(nibt);
+        Identifier id = OutsideCache.putNewIdentifierOrCached(pos, nibt);
+        selectTexturePure(id);
+    }
+
+    private static void selectFlippedTexture(BlockPos pos, NativeImageBackedTexture nibt) {
+        if (nibt == null) return;
+        Identifier id = OutsideCache.putFlippedNewIdentifierOrCached(pos, nibt);
+        selectTexturePure(id);
+    }
+
+    private static void selectTexturePure(Identifier id) {
         Objects.requireNonNull(
                 CLIENT.getTextureManager().getTexture(id), "TextureManager.getTexture"
         ).bindTexture();
@@ -129,16 +135,15 @@ public class SignBlockEntityRenderMixin {
     private void injectRender(SignBlockEntity signBlockEntity, float f,
                               MatrixStack matrices, VertexConsumerProvider vertexConsumerProvider,
                               int i, int j, CallbackInfo defModelRender) {
-        final List<String> x = InternalSpecialUtility.getPlaintextLines(signBlockEntity);
-        final String specs = String.join("", x);
+        final String specs = String.join("", InternalSpecialUtility.getPlaintextLines(signBlockEntity));
         final boolean isURLSpec = specs.startsWith("#$");
         final boolean isTextureSpec = specs.startsWith("!");
+        final BlockPos pos = signBlockEntity.getPos();
         if (!isURLSpec && !isTextureSpec) {
             return;
         }
 
         if (!isTarget(signBlockEntity)) {
-            final BlockPos pos = signBlockEntity.getPos();
             notifyUnknownBlock(pos);
             return;
         }
@@ -150,7 +155,7 @@ public class SignBlockEntityRenderMixin {
             int confBegin = specs.indexOf("{");
             // SignPicturePorted.LOGGER.debug("conf start:" + confBegin);
             String urlFlag = confBegin >= 0 ? specs.substring(2, confBegin) : specs.substring(2);
-            if (invalidURL.contains(urlFlag)) {
+            if (OutsideCache.invalidURL.contains(urlFlag)) {
                 return;
             }
 
@@ -160,27 +165,37 @@ public class SignBlockEntityRenderMixin {
             final String url = urlFlag.startsWith("http://") || urlFlag.startsWith("https://")
                     ? urlFlag
                     : "https://" + urlFlag;
-            SignPicturePorted.LOGGER.info(url);
+            // SignPicturePorted.LOGGER.info(url);
             final Optional<URL> urlOpt = parseURL(url);
             // empty implies parsing was failed
-            if (urlOpt.isEmpty()) return;
+            if (!urlOpt.isPresent()) return;
             final URL url2 = urlOpt.get();
-
-            NativeImageBackedTexture nibt = null;
-            try {
-                nibt = CompletableFuture.supplyAsync(() -> url2)
-                        .handle((r, l) -> registerFrom(r))
-                        .get();
-            } catch (InterruptedException | ExecutionException | NoSuchElementException e) {
-                SignPicturePorted.LOGGER.catching(e);
+            final NativeImageBackedTexture nibt;
+            final NativeImage ni;
+            {
+                final Supplier<NativeImageBackedTexture> fetch = () -> fetchFrom(url2, OptionalLong.empty())
+                        .value()
+                        .map(NativeImageBackedTexture::new)
+                        .orElseGet(NativeImageFactory.errorImage::getValue);
+                if (!OutsideCache.sbp.contains(pos)) {
+                    // unsafeRunAsyncAndForget
+                    CompletableFuture.supplyAsync(fetch)
+                            .thenAccept(x -> OutsideCache.put(pos, x, false));
+                    OutsideCache.sbp.add(pos);
+                }
+                final Supplier<NativeImageBackedTexture> loadSupplier = NativeImageFactory.loadingImage::getValue;
+                final ImageWrapper cacheEntry = OutsideCache.putOrCached(pos, loadSupplier);
+                final Optional<NativeImageBackedTexture> cache = Optional.ofNullable(cacheEntry.nibt.get());
+                nibt = cache.orElseGet(loadSupplier);
+                ni = nibt.getImage();
+                // SignPicturePorted.LOGGER.info("back(pos: " + pos + "): " + ni);
+                Objects.requireNonNull(ni);
+                selectTexture(pos, nibt);
             }
-
-            if (nibt == null) return;
-            selectTexture(nibt);
             // NOTE テクスチャ向いてるほうがZ-
 
             int lightLevel = signBlockEntity.getWorld().getLightLevel(LightType.BLOCK, signBlockEntity.getPos());
-            SignPicturePorted.LOGGER.info("light: " + lightLevel + ", pos: " + signBlockEntity.getPos());
+            // SignPicturePorted.LOGGER.info("light: " + lightLevel + ", pos: " + signBlockEntity.getPos());
             matrices.push();
             // color(1, 0, 1);
             //
@@ -196,7 +211,7 @@ public class SignBlockEntityRenderMixin {
             double offsetRight = pr.offsetRight;
             double offsetDepth = pr.offsetDepth;
             // against Z-fighting
-            matrices.translate(offsetRight, offsetUp, offsetDepth + EPS_D);
+            matrices.translate(offsetRight, offsetUp, offsetDepth + EPS_F);
             float scaleX = (float) pr.scaleX;
             float scaleY = (float) pr.scaleY;
             matrices.scale(scaleX, scaleY, 1.0F);
@@ -204,7 +219,16 @@ public class SignBlockEntityRenderMixin {
             drawImage(matrices);
 
             // 左右反転したテクスチャを裏側に表示させる
-            selectTexture(new NativeImageBackedTexture(TextureFlipper.flipHorizontal(nibt.getImage())));
+            {
+                Supplier<? extends NativeImageBackedTexture> ff =
+                        () -> new NativeImageBackedTexture(TextureFlipper.flipHorizontal(ni));
+                ImageWrapper cache2 = OutsideCache.putFlippedOrCached(pos, ff);
+                final NativeImageBackedTexture nibt2;
+                final Optional<NativeImageBackedTexture> cache12 = Optional.ofNullable(cache2.nibt.get());
+                nibt2 = cache12.orElseGet(ff);
+                selectFlippedTexture(pos, nibt2);
+            }
+
             matrices.translate(scaleX, 0.0, 0.0);
             matrices.multiply(new Quaternion(0.0F, 180.0F, 0.0F, true));
             drawImage(matrices);
@@ -233,136 +257,26 @@ public class SignBlockEntityRenderMixin {
         }
     }
 
-    private static final Map<NativeImageBackedTexture, Identifier> identifierMap = new HashMap<>();
-    private static Identifier newIdentifierOrCached(NativeImageBackedTexture nibt) {
-        if (identifierMap.containsKey(nibt)) {
-            return identifierMap.get(nibt);
-        }
 
-        Identifier newIdentifier = CLIENT.getTextureManager().registerDynamicTexture("sgpc_reloaded", nibt);
-        identifierMap.put(nibt, newIdentifier);
-        return newIdentifier;
-    }
-
-    private void invalidate() {
-        correspond.values()
-                .stream()
-                .map(SoftReference::get)
-                .filter(Objects::nonNull)
-                .forEach(NativeImageBackedTexture::close);
-        correspond.clear();
-        flippedCache.values()
-                .stream()
-                .map(SoftReference::get)
-                .filter(Objects::nonNull)
-                .forEach(NativeImageBackedTexture::close);
-        flippedCache.clear();
-        identifierMap.keySet().forEach(x -> x.close());
-        identifierMap.clear();
-        invalidURL.clear();
-    }
-
-    private NativeImageBackedTexture registerFrom(URL url) {
-        if (correspond.containsKey(url) && correspond.get(url).get() != null) {
-            return correspond.get(url).get();
-        }
-
-        // If we don't do that, the game will be frozen
-        if (badURLs.contains(url.toString())) {
-            return null;
-        }
-        /*
-        System.out.println(flippedCache.entrySet().parallelStream()
-                .map(x -> x.getKey() + ": " + x.getValue())
-                .collect(Collectors.joining(", ", "[", "]")));
-        */
-        NativeImageBackedTexture returning;
-        {
-            InputStream httpBuffer;
-            try {
-                HttpURLConnection huc1;
-                if (url.getHost() == null || url.getProtocol() == null) return null;
-                huc1 = implicitCast(url.openConnection());
-                huc1.setInstanceFollowRedirects(true);
-                huc1.connect();
-                final int code = huc1.getResponseCode();
-                if (code == 200) {
-                    // OK: Do nothing
-                } else if (code == 204) {
-                    throw new IOException("Nothing can't be rendered (HTTP 204)");
-                } else {
-                    throw new IOException("URL connection failed: {code: " + code + "}");
-                }
-
-                /*
-                Check response MIME type, these types will be accepted:
-                    * image/png
-                    * image/jpg
-                    * image/xml+svg
-                 */
-                String mimeType = huc1.getContentType();
-
-                if (!mimeType.startsWith("image/")) {
-                    throw new IOException("Content-Type " + mimeType + " is not image");
-                }
-                httpBuffer = huc1.getInputStream();
-            } catch (IllegalArgumentException | IOException e) {
-                SignPicturePorted.LOGGER.error("Exception caught", e);
-                badURLs.add(url.toString());
-                return null;
-            }
-
-            NativeImage mayImage;
-            InputStream bufferedHttpIS = new BufferedInputStream(httpBuffer);
-            try {
-                mayImage = NativeImage.read(bufferedHttpIS);
-            } catch (IOException | UnsupportedOperationException e) {
-                badURLs.add(url.toString());
-                SignPicturePorted.LOGGER.error("During get NativeImage", e);
-                return null;
-            }
-
-            returning = new NativeImageBackedTexture(mayImage);
-            correspond.put(url, new SoftReference<>(returning));
-        }
-
-        return returning;
-    }
-
-    private static final HttpClient client = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .followRedirects(HttpClient.Redirect.ALWAYS)
-            // .authenticator(Authenticator.getDefault())
-            .build();
-
-    private static <A, R, X extends Throwable> Optional<R> completeSuccessfulOrNone(A a, MayThrowFunction<A, R, X> arx) {
-        return completeSuccessfulOrNone(a, arx, Tag.of());
-    }
-
-    private static <A, R, X extends Throwable> Optional<R> completeSuccessfulOrNone(A a, MayThrowFunction<A, R, X> arx, Tag<X> tx) {
+    private static ErrorOrValid<? extends String, ? extends NativeImage> fetchFrom(URL url, OptionalLong ifModifiedSince) {
+        SignPicturePorted.LOGGER.info("fetchFrom: " + url);
         try {
-            return Optional.of(arx.apply(a));
-        } catch (Throwable t) {
-            if (tx.isAcceptable(t)) {
-                return Optional.empty();
-            } else {
-                throw new RuntimeException(t);
-            }
+            //noinspection Convert2MethodRef
+            return CompletableFuture.supplyAsync(wrapExceptionToUnchecked(() -> url.openConnection()))
+                    .thenApplyAsync(x -> (HttpURLConnection) x)
+                    .thenApplyAsync(x -> {
+                        x.setInstanceFollowRedirects(true);
+                        ifModifiedSince.ifPresent(x::setIfModifiedSince);
+                        wrapExceptionToUnchecked(x::connect).run();
+                        return x;
+                    })
+                    .thenApplyAsync(x -> wrapExceptionToUnchecked(x::getInputStream).get())
+                    .thenApplyAsync(x -> wrapExceptionToUnchecked(() -> NativeImage.read(x)).get())
+                    .<ErrorOrValid<? extends String, ? extends NativeImage>>handleAsync((res, ex) ->
+                            res != null ? ErrorOrValid.valid(res) : ErrorOrValid.error(ex.toString()))
+                    .get();
+        } catch (InterruptedException | ExecutionException e) {
+            return ErrorOrValid.error(e.getMessage());
         }
-    }
-
-    private Optional<NativeImage> getContent(URL url) {
-        final Optional<URI> xxx = completeSuccessfulOrNone(url, URL::toURI);
-        if (xxx.isEmpty()) return Optional.empty();
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(xxx.get())
-                .GET()
-                .build();
-
-        return client.sendAsync(req, HttpResponse.BodyHandlers.ofInputStream())
-                .thenApply(HttpResponse::body)
-                .thenApply(x -> completeSuccessfulOrNone(x, NativeImage::read))
-                .join();
     }
 }

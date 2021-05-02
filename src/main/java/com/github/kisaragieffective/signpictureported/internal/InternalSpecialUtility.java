@@ -1,4 +1,4 @@
-package com.github.kisaragieffective.signpictureported;
+package com.github.kisaragieffective.signpictureported.internal;
 
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.nbt.CompoundTag;

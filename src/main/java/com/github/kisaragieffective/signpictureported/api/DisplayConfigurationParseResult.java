@@ -1,12 +1,18 @@
 package com.github.kisaragieffective.signpictureported.api;
 
+import it.unimi.dsi.fastutil.doubles.DoubleList;
+import it.unimi.dsi.fastutil.doubles.DoubleLists;
+
+import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
 
-import static com.github.kisaragieffective.signpictureported.Functions.compose;
-import static com.github.kisaragieffective.signpictureported.Functions.switchBasedNullish;
+import static com.github.kisaragieffective.signpictureported.internal.Functions.compose;
+import static com.github.kisaragieffective.signpictureported.internal.Functions.switchBasedNullish;
 
 public final class DisplayConfigurationParseResult {
     public final double offsetRight;
@@ -67,10 +73,13 @@ public final class DisplayConfigurationParseResult {
     );
 
     public static final String DOUBLE = "[-+]?(?:\\d+|\\d+\\.\\d+)";
+    // see: https://github.com/Team-Fruit/SignPicture/blob/3a10ae618ed32415d524a76e3c90b60cb33af6b2/sources/universal/src/main/java/net/teamfruit/signpic/attr/prop/PropSyntax.java
     public static final String REGEX = "(?:(?<scale2>(?<sx>" + DOUBLE + ")x(?<sy>" + DOUBLE + "))" +
             "|(?<scale1>x(?<s>" + DOUBLE + ")))?" +
             "(?<x>X" + DOUBLE + ")?(?<y>Y" + DOUBLE + ")?(?<z>Z" + DOUBLE + ")?" +
-            "(?<r>R" + DOUBLE + ")?(?<u>U" + DOUBLE + ")?(?<d>D" + DOUBLE + ")?";
+            "(?:(?<right>R" + DOUBLE + ")|(?<left>L" + DOUBLE + "))?" +
+            "(?:(?<up>U" + DOUBLE + ")|(?<down>D" + DOUBLE + "))?" +
+            "((?<front>F" + DOUBLE + ")|(?<beside>B" + DOUBLE + "))?";
     public static final Pattern PATTERN = Pattern.compile(REGEX);
 
     /**
@@ -80,8 +89,7 @@ public final class DisplayConfigurationParseResult {
      * @return parse result
      */
     public static DisplayConfigurationParseResult parse(String from) {
-        Matcher m = PATTERN
-                .matcher(from);
+        Matcher m = PATTERN.matcher(from);
         if (m.matches()) {
             Function<String, OptionalDouble> extractor = groupName -> switchBasedNullish(
                     m.group(groupName),
@@ -103,12 +111,32 @@ public final class DisplayConfigurationParseResult {
             final OptionalDouble rotateX = extractor.apply("x");
             final OptionalDouble rotateY = extractor.apply("y");
             final OptionalDouble rotateZ = extractor.apply("z");
-            final OptionalDouble offsetRight = extractor.apply("r");
-            final OptionalDouble offsetUp = extractor.apply("u");
-            final OptionalDouble offsetDepth = extractor.apply("d");
+            final OptionalDouble offsetRight = or(extractor.apply("right"), () ->
+                    toStream(extractor.apply("left"))
+                            .map(x -> -x)
+                            .findFirst()
+            );
+            final OptionalDouble offsetUp = or(extractor.apply("up"), () ->
+                    toStream(extractor.apply("down"))
+                            .map(x -> -x)
+                            .findFirst()
+            );
+            final OptionalDouble offsetDepth = or(extractor.apply("front"), () ->
+                    toStream(extractor.apply("beside"))
+                            .map(x -> -x)
+                            .findFirst()
+            );
             return new DisplayConfigurationParseResult(offsetRight, offsetUp, offsetDepth, rotateX, rotateY, rotateZ, scaleX, scaleY);
         } else {
             return DisplayConfigurationParseResult.DEFAULT;
         }
+    }
+
+    private static OptionalDouble or(OptionalDouble od1, Supplier<? extends OptionalDouble> od2) {
+        return od1.isPresent() ? od1 : od2.get();
+    }
+
+    private static DoubleStream toStream(OptionalDouble od) {
+        return od.isPresent() ? DoubleStream.of(od.getAsDouble()) : DoubleStream.empty();
     }
 }

@@ -65,11 +65,11 @@ public abstract class BIRRMixin {
             BuiltinItemRendererRegistry.DynamicItemRenderer defaultRenderer = defRenderer.get(sign);
             BuiltinItemRendererRegistry.DynamicItemRenderer customRenderer = getRenderer(defaultRenderer);
             SignPicturePorted.LOGGER.info("Overriding renderer: for:" + sign + ",render class:" + defaultRenderer);
-                // defRenderer.remove(sign);
-                this.register(
-                        Objects.requireNonNull(sign, "sign"),
-                        Objects.requireNonNull(customRenderer, "customRender")
-                );
+            // defRenderer.remove(sign);
+            this.register(
+                    Objects.requireNonNull(sign, "sign"),
+                    Objects.requireNonNull(customRenderer, "customRender")
+            );
         });
         RENDERERS = defRenderer;
         SignPicturePorted.LOGGER.info("Done");

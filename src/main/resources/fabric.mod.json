@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "signpictutureported",
+  "id": "signpictureported",
   "version": "${version}",
 
   "name": "SignPicture Ported For Fabric",
