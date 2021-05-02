@@ -1,18 +1,19 @@
 # SignPicturePorted
-This mod is a ported version of https://github.com/Team-Fruit/SignPicture.
+This mod is a (incomplete) ported version of https://github.com/Team-Fruit/SignPicture.
 
 This mod supports only fabric currently.
 
 This mod is tested on 1.16.x. Assuming working on other versions.
 
 ## Feature
-* Handles original syntax
+* Display remote images from the Internet
 
 ## Building
-...
+1. Import project
+2. run `gradlew build`
 
 ## LICENSE
-Files under `/src` is under MIT License:
+All files under `/src` is under MIT License:
 ```
 Copyright 2021 KisaragiEffective, HitSound
 
@@ -25,7 +26,3 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 README.md (yes, you are reading this file) is under CC0, other files inherited from https://github.com/natanfudge/fabric-example-mod-kotlin is under CC0.
 
-## TODO
-* Scaling, offset
-* GUI
-* Key binding
