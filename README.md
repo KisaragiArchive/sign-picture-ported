@@ -5,6 +5,8 @@ This mod supports only fabric currently.
 
 This mod is tested on 1.16.x. Assuming working on other versions.
 
+**Disclaimer**: This mod is **not** fully compatible `Team-Fruit/SignPicture`, nor functionally-compatible. Use at your own lisk. For more details, see LICENSE section.
+
 ## Feature
 * Display remote images from the Internet
 
