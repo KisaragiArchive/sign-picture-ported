@@ -21,12 +21,14 @@ import net.minecraft.client.render.block.entity.SignBlockEntityRenderer;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Quaternion;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.world.LightType;
 import org.jetbrains.annotations.Contract;
+import org.joml.AxisAngle4d;
+import org.joml.AxisAngle4f;
+import org.joml.Quaternionf;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -109,7 +111,7 @@ public class SignBlockEntityRenderMixin {
             // 角度補正
             float rotateAngle = getSignRotation(signBlockEntity);
 
-            matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(rotateAngle));
+            matrices.multiply(new Quaternionf(new AxisAngle4d(rotateAngle, 0, 1, 0)));
             matrices.translate(-0.5, -0.5, 0);
         } else if (isOnWall) {
             matrices.scale(1F, -1F, 1F);
@@ -128,9 +130,21 @@ public class SignBlockEntityRenderMixin {
                 matrices.translate(0, 0, 1);
             }
 
-            matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(360 - rotateAngle));
+            rotateByAxisY(matrices, 360 - rotateAngle);
         }
     }
+
+    private static void rotateByAxisY(MatrixStack matrices, float rotateAngle) {
+        // 1.19.3+: RotationAxis.POSITIVE_Y.rotationDegrees
+        // 1.19.2-: Vec3f.POSITIVE_Y
+        // more legacy version: Vector3f.POSITIVE_Y
+        rotateAllAxisByDegrees(matrices, 0, rotateAngle, 0);
+    }
+
+    private static void rotateAllAxisByDegrees(MatrixStack matrices, float degX, float degY, float degZ) {
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(degX).rotateY(degY).rotateZ(degZ));
+    }
+
     @Inject(at = @At("HEAD"), method = "render", cancellable = true)
     private void injectRender(SignBlockEntity signBlockEntity, float f,
                               MatrixStack matrices, VertexConsumerProvider vertexConsumerProvider,
@@ -206,7 +220,7 @@ public class SignBlockEntityRenderMixin {
             float rotateX = (float) pr.rotateX;
             float rotateY = (float) pr.rotateY;
             float rotateZ = (float) pr.rotateZ;
-            matrices.multiply(new Quaternion(rotateX, rotateY, rotateZ, true));
+            matrices.multiply(new Quaternionf(new AxisAngle4f(0.0F, rotateX, rotateY, rotateZ)));
             double offsetUp = pr.offsetUp;
             double offsetRight = pr.offsetRight;
             double offsetDepth = pr.offsetDepth;
@@ -230,7 +244,7 @@ public class SignBlockEntityRenderMixin {
             }
 
             matrices.translate(scaleX, 0.0, 0.0);
-            matrices.multiply(new Quaternion(0.0F, 180.0F, 0.0F, true));
+            rotateByAxisY(matrices, 180);
             drawImage(matrices);
 
             matrices.pop();

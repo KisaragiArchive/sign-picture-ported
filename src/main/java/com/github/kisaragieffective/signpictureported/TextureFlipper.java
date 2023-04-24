@@ -19,7 +19,7 @@ public final class TextureFlipper {
         final NativeImage buffer = new NativeImage(ni.getFormat(), w, h, false);
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                buffer.setPixelColor(w - 1 - x, y, ni.getPixelColor(x, y));
+                buffer.setColor(w - 1 - x, y, ni.getColor(x, y));
             }
         }
         return buffer;

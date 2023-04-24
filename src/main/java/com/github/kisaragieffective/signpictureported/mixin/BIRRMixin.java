@@ -6,9 +6,10 @@ import net.fabricmc.fabric.impl.client.rendering.BuiltinItemRendererRegistryImpl
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.render.model.json.ModelTransformation;
+import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemConvertible;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtCompound;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -81,10 +82,10 @@ public abstract class BIRRMixin {
         SignPicturePorted.LOGGER.info("called getRenderer in BIRRMixin");
         return (itemStack, mode, ms, vcp, i, i1) -> {
             SignPicturePorted.LOGGER.warn("Hi from BuiltinItemRendererRegistry.DynamicItemRenderer");
-            CompoundTag tag = itemStack.getTag();
+            NbtCompound tag = itemStack.getNbt();
             if ((tag == null || !tag.contains("line1") || itemStack.isInFrame()) && defaultRenderer != null) {
                 // default to built-in renderer
-                defaultRenderer.render(itemStack, ModelTransformation.Mode.GUI, ms, vcp, i, i1);
+                defaultRenderer.render(itemStack, ModelTransformationMode.GUI, ms, vcp, i, i1);
             }
             SignPicturePorted.LOGGER.info("Hey! Handle This case!\ntag:" + tag + "\nitemstack:" + itemStack + "\nmode:" + mode);
             // DO NOTHING, SO WE CAN SEE NOTHING?

@@ -20,11 +20,11 @@ import java.util.Set;
 @Mixin(World.class)
 public class BlockInvalidateMixin {
     @Inject(method = "markDirty", at = @At("HEAD"))
-    public void onBlockInvalidate(BlockPos pos, BlockEntity blockEntity, CallbackInfo ci) {
+    public void onBlockInvalidate(BlockPos pos, CallbackInfo ci) {
         final ImageWrapper r2 = OutsideCache.cache.get(pos);
         if (r2 == null) return;
         final NativeImageBackedTexture nibt = r2.nibt.get();
-        final Set<@NotNull ? extends NativeImageBackedTexture> excludedSet = new HashSet<>(Arrays.asList(
+        final Set<? extends @NotNull NativeImageBackedTexture> excludedSet = new HashSet<>(Arrays.asList(
                 NativeImageFactory.errorImage.getValue(),
                 NativeImageFactory.loadingImage.getValue()
         ));

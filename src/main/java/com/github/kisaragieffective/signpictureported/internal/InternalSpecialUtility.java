@@ -1,7 +1,7 @@
 package com.github.kisaragieffective.signpictureported.internal;
 
 import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.JsonHelper;
 
 import java.util.Arrays;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class InternalSpecialUtility {
     private InternalSpecialUtility() {}
 
-    private static List<String> lineTags(CompoundTag dest) {
+    private static List<String> lineTags(NbtCompound dest) {
         return Collections.unmodifiableList(Arrays.asList(
                 dest.getString("Text1"),
                 dest.getString("Text2"),
@@ -26,8 +26,7 @@ public class InternalSpecialUtility {
     }
 
     public static List<String> getPlaintextLines(SignBlockEntity sbe) {
-        CompoundTag dest = new CompoundTag();
-        sbe.toTag(dest);
+        NbtCompound dest = sbe.createNbt();
         List<String> lines = lineTags(dest);
         return lines.stream()
                 .map(JsonHelper::deserialize)
@@ -48,10 +47,5 @@ public class InternalSpecialUtility {
                     return text;
                 })
                 .collect(Collectors.toList());
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T> T implicitCast(Object o) {
-        return (T) o;
     }
 }

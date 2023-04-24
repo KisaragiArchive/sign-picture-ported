@@ -22,8 +22,7 @@
       "com.github.kisaragieffective.signpictureported.SignPicturePorted"
     ],
     "client": [
-      "com.github.kisaragieffective.signpictureported.SignPicturePorted",
-      "com.github.kisaragieffective.signpictureported.KeyBindingConfig"
+      "com.github.kisaragieffective.signpictureported.SignPicturePorted"
     ]
   },
   "mixins": [
@@ -32,7 +31,6 @@
   "depends": {
     "fabricloader": ">=0.8.7",
     "fabric": "*",
-    "fabric-language-kotlin": "*",
-    "minecraft": "1.16.x"
+    "minecraft": ">=1.19.4"
   }
 }
