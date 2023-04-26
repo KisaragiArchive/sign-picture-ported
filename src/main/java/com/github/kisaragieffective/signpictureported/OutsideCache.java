@@ -76,14 +76,17 @@ public class OutsideCache {
     }
 
     public static Identifier putNewIdentifierOrCached(BlockPos pos, NativeImageBackedTexture nibt) {
+        Objects.requireNonNull(nibt);
         return identifierMap.computeIfAbsent(pos, p -> computeNewIdentifier(p, nibt));
     }
 
     public static Identifier putNewIdentifier(BlockPos pos, NativeImageBackedTexture nibt) {
+        Objects.requireNonNull(nibt);
         return identifierMap.put(pos, computeNewIdentifier(pos, nibt));
     }
 
     public static Identifier computeNewIdentifier(BlockPos pos, NativeImageBackedTexture nibt) {
+        Objects.requireNonNull(nibt);
         Identifier newIdentifier = MinecraftClient.getInstance().getTextureManager().registerDynamicTexture("sgpc_reloaded", nibt);
         SignPicturePorted.LOGGER.info("New identifier payed out (for " + pos + "): " + newIdentifier);
         return newIdentifier;

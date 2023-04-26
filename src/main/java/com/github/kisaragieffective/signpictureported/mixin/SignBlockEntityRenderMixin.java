@@ -75,13 +75,13 @@ public class SignBlockEntityRenderMixin {
     }
 
     private static void selectTexture(BlockPos pos, NativeImageBackedTexture nibt) {
-        if (nibt == null) return;
+        Objects.requireNonNull(nibt);
         Identifier id = OutsideCache.putNewIdentifierOrCached(pos, nibt);
         selectTexturePure(id);
     }
 
     private static void selectFlippedTexture(BlockPos pos, NativeImageBackedTexture nibt) {
-        if (nibt == null) return;
+        Objects.requireNonNull(nibt);
         Identifier id = OutsideCache.putFlippedNewIdentifierOrCached(pos, nibt);
         selectTexturePure(id);
     }
@@ -184,7 +184,6 @@ public class SignBlockEntityRenderMixin {
             // empty implies parsing was failed
             if (!urlOpt.isPresent()) return;
             final URL url2 = urlOpt.get();
-            final NativeImageBackedTexture nibt;
             final NativeImage ni;
             {
                 final Supplier<NativeImageBackedTexture> fetch = () -> fetchFrom(url2, OptionalLong.empty())
@@ -192,6 +191,7 @@ public class SignBlockEntityRenderMixin {
                         .map(NativeImageBackedTexture::new)
                         .orElseGet(StaticNativeImage.errorImage::getValue);
                 if (!OutsideCache.sbp.contains(pos)) {
+                    SignPicturePorted.LOGGER.debug("fetch: {}", urlFlag);
                     // unsafeRunAsyncAndForget
                     CompletableFuture.supplyAsync(fetch)
                             .thenAccept(x -> OutsideCache.put(pos, x, false));
@@ -200,11 +200,15 @@ public class SignBlockEntityRenderMixin {
                 final Supplier<NativeImageBackedTexture> loadSupplier = StaticNativeImage.loadingImage::getValue;
                 final ImageWrapper cacheEntry = OutsideCache.putOrCached(pos, loadSupplier);
                 final Optional<NativeImageBackedTexture> cache = Optional.ofNullable(cacheEntry.nibt.get());
-                nibt = cache.orElseGet(loadSupplier);
+                final NativeImageBackedTexture nibt = cache.orElseGet(loadSupplier);
                 ni = nibt.getImage();
                 // SignPicturePorted.LOGGER.info("back(pos: " + pos + "): " + ni);
                 Objects.requireNonNull(ni);
-                selectTexture(pos, nibt);
+                if (nibt != null) {
+                    selectTexture(pos, nibt);
+                } else {
+                    return;
+                }
             }
             // NOTE テクスチャ向いてるほうがZ-
 
@@ -237,10 +241,11 @@ public class SignBlockEntityRenderMixin {
                 Supplier<? extends NativeImageBackedTexture> ff =
                         () -> new NativeImageBackedTexture(TextureFlipper.flipHorizontal(ni));
                 ImageWrapper cache2 = OutsideCache.putFlippedOrCached(pos, ff);
-                final NativeImageBackedTexture nibt2;
                 final Optional<NativeImageBackedTexture> cache12 = Optional.ofNullable(cache2.nibt.get());
-                nibt2 = cache12.orElseGet(ff);
-                selectFlippedTexture(pos, nibt2);
+                final NativeImageBackedTexture nibt2 = cache12.orElseGet(ff);
+                if (nibt2 != null) {
+                    selectFlippedTexture(pos, nibt2);
+                }
             }
 
             matrices.translate(scaleX, 0.0, 0.0);

@@ -1,51 +1,24 @@
 package com.github.kisaragieffective.signpictureported.internal;
 
 import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.util.JsonHelper;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class InternalSpecialUtility {
     private InternalSpecialUtility() {}
-
-    private static List<String> lineTags(NbtCompound dest) {
-        return Collections.unmodifiableList(Arrays.asList(
-                dest.getString("Text1"),
-                dest.getString("Text2"),
-                dest.getString("Text3"),
-                dest.getString("Text4")
-        ));
-    }
 
     public static <T> T never() {
         throw new AssertionError("This statement shouldn't reached!");
     }
 
     public static List<String> getPlaintextLines(SignBlockEntity sbe) {
-        NbtCompound dest = sbe.createNbt();
-        List<String> lines = lineTags(dest);
-        return lines.stream()
-                .map(JsonHelper::deserialize)
-                .map(doc -> {
-                    String text = doc.getAsJsonPrimitive("text").getAsString();
-                    StringBuilder textAccumerator = new StringBuilder(128);
-                    if (text.isEmpty()) {
-                        if (doc.has("extra")) {
-                            // TODO reduce-like operation
-                            doc.getAsJsonArray("extra")
-                                    .forEach(elem ->
-                                            textAccumerator.append(elem.getAsJsonObject().getAsJsonPrimitive("text").getAsString())
-                                    );
-                            text = textAccumerator.toString();
-                        }
-                    }
-
-                    return text;
-                })
-                .collect(Collectors.toList());
+        return Collections.unmodifiableList(Arrays.asList(
+                sbe.getTextOnRow(0, false).getString(),
+                sbe.getTextOnRow(1, false).getString(),
+                sbe.getTextOnRow(2, false).getString(),
+                sbe.getTextOnRow(3, false).getString()
+        ));
     }
 }
