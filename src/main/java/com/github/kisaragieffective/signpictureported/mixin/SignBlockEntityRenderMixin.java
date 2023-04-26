@@ -1,7 +1,7 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
 import com.github.kisaragieffective.signpictureported.ImageWrapper;
-import com.github.kisaragieffective.signpictureported.NativeImageFactory;
+import com.github.kisaragieffective.signpictureported.StaticNativeImage;
 import com.github.kisaragieffective.signpictureported.OutsideCache;
 import com.github.kisaragieffective.signpictureported.SignPicturePorted;
 import com.github.kisaragieffective.signpictureported.TextureFlipper;
@@ -190,14 +190,14 @@ public class SignBlockEntityRenderMixin {
                 final Supplier<NativeImageBackedTexture> fetch = () -> fetchFrom(url2, OptionalLong.empty())
                         .value()
                         .map(NativeImageBackedTexture::new)
-                        .orElseGet(NativeImageFactory.errorImage::getValue);
+                        .orElseGet(StaticNativeImage.errorImage::getValue);
                 if (!OutsideCache.sbp.contains(pos)) {
                     // unsafeRunAsyncAndForget
                     CompletableFuture.supplyAsync(fetch)
                             .thenAccept(x -> OutsideCache.put(pos, x, false));
                     OutsideCache.sbp.add(pos);
                 }
-                final Supplier<NativeImageBackedTexture> loadSupplier = NativeImageFactory.loadingImage::getValue;
+                final Supplier<NativeImageBackedTexture> loadSupplier = StaticNativeImage.loadingImage::getValue;
                 final ImageWrapper cacheEntry = OutsideCache.putOrCached(pos, loadSupplier);
                 final Optional<NativeImageBackedTexture> cache = Optional.ofNullable(cacheEntry.nibt.get());
                 nibt = cache.orElseGet(loadSupplier);

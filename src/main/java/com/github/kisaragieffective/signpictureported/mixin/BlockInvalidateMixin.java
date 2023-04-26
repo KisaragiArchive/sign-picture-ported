@@ -1,9 +1,8 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.NativeImageFactory;
+import com.github.kisaragieffective.signpictureported.StaticNativeImage;
 import com.github.kisaragieffective.signpictureported.OutsideCache;
 import com.github.kisaragieffective.signpictureported.ImageWrapper;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -25,8 +24,8 @@ public class BlockInvalidateMixin {
         if (r2 == null) return;
         final NativeImageBackedTexture nibt = r2.nibt.get();
         final Set<? extends @NotNull NativeImageBackedTexture> excludedSet = new HashSet<>(Arrays.asList(
-                NativeImageFactory.errorImage.getValue(),
-                NativeImageFactory.loadingImage.getValue()
+                StaticNativeImage.errorImage.getValue(),
+                StaticNativeImage.loadingImage.getValue()
         ));
         if (nibt != null && excludedSet.stream().noneMatch(x -> x.equals(nibt))) {
             OutsideCache.drop(pos);

@@ -3,10 +3,10 @@ package com.github.kisaragieffective.signpictureported;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 
-public class NativeImageFactory {
-    public static final Box<NativeImageBackedTexture> errorImage = new Box<>(NativeImageFactory::getErrorImage);
-    public static NativeImageBackedTexture getErrorImage() {
-        final NativeImage nini = new NativeImage(128, 128, true);
+public class StaticNativeImage {
+    public static final LazyInitialize<NativeImageBackedTexture> errorImage = new LazyInitialize<>(StaticNativeImage::getErrorImage);
+    private static NativeImageBackedTexture getErrorImage() {
+        final NativeImage nini = new NativeImage(128, 128, false);
         for (int xv = 0; xv < 128; xv++) {
             nini.setColor(xv, 0, 0xFF_00_00_FF);
             nini.setColor(xv, 127, 0xFF_00_00_FF);
@@ -16,10 +16,10 @@ public class NativeImageFactory {
         return new NativeImageBackedTexture(nini);
     }
 
-    public static final Box<NativeImageBackedTexture> loadingImage = new Box<>(NativeImageFactory::getLoadingImage);
+    public static final LazyInitialize<NativeImageBackedTexture> loadingImage = new LazyInitialize<>(StaticNativeImage::getLoadingImage);
 
-    public static NativeImageBackedTexture getLoadingImage() {
-        final NativeImage nini = new NativeImage(128, 128, true);
+    private static NativeImageBackedTexture getLoadingImage() {
+        final NativeImage nini = new NativeImage(128, 128, false);
         final int gray = 0x80808080;
         for (int xv = 0; xv < 128; xv++) {
             nini.setColor(xv, 0, gray);
