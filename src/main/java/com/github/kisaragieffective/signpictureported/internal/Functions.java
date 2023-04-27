@@ -12,7 +12,7 @@ public final class Functions {
 
     public static <T, R> R switchBasedNullish(
             @Nullable T that,
-            Function<@NotNull ? super T, ? extends R> ifNotNullMapper,
+            Function<? super @NotNull T, ? extends R> ifNotNullMapper,
             Supplier<? extends R> ifNull
     ) {
         return that != null ? ifNotNullMapper.apply(that) : ifNull.get();

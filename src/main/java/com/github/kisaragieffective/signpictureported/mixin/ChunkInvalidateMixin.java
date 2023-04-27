@@ -1,26 +1,22 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.OutsideCache;
+import com.github.kisaragieffective.signpictureported.internal.BuiltinPreciseCacheRepositories;
 import net.minecraft.client.world.ClientChunkManager;
+import net.minecraft.client.world.ClientWorld;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientChunkManager.class)
 public class ChunkInvalidateMixin {
+    @Shadow @Final
+    ClientWorld world;
+
     @Inject(method = "unload", at = @At("HEAD"))
     public void onChunkUnloaded(int chunkX, int chunkZ, CallbackInfo ci) {
-        final int lowerX = chunkX * 16;
-        final int upperX = lowerX + 15;
-        final int lowerZ = chunkZ * 16;
-        final int upperZ = lowerZ + 15;
-        OutsideCache.locations()
-                .stream()
-                .filter(pos -> lowerX <= pos.getX()
-                        && pos.getX() <= upperX
-                        && lowerZ <= pos.getZ()
-                        && pos.getZ() <= upperZ)
-                .forEach(OutsideCache::drop);
+        BuiltinPreciseCacheRepositories.NORMAL.releaseByChunk(world.getDimension(), chunkX, chunkZ);
     }
 }

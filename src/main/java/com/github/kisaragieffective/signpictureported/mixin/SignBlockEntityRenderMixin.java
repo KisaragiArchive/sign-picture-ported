@@ -1,11 +1,9 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.ImageWrapper;
-import com.github.kisaragieffective.signpictureported.StaticNativeImage;
-import com.github.kisaragieffective.signpictureported.OutsideCache;
 import com.github.kisaragieffective.signpictureported.SignPicturePorted;
-import com.github.kisaragieffective.signpictureported.TextureFlipper;
+import com.github.kisaragieffective.signpictureported.StaticNativeImage;
 import com.github.kisaragieffective.signpictureported.api.DisplayConfigurationParseResult;
+import com.github.kisaragieffective.signpictureported.internal.BuiltinPreciseCacheRepositories;
 import com.github.kisaragieffective.signpictureported.internal.ErrorOrValid;
 import com.github.kisaragieffective.signpictureported.internal.InternalSpecialUtility;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -25,6 +23,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.world.LightType;
+import net.minecraft.world.dimension.DimensionType;
 import org.jetbrains.annotations.Contract;
 import org.joml.AxisAngle4d;
 import org.joml.AxisAngle4f;
@@ -37,7 +36,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
@@ -74,15 +75,10 @@ public class SignBlockEntityRenderMixin {
         }
     }
 
-    private static void selectTexture(BlockPos pos, NativeImageBackedTexture nibt) {
-        Objects.requireNonNull(nibt);
-        Identifier id = OutsideCache.putNewIdentifierOrCached(pos, nibt);
-        selectTexturePure(id);
-    }
-
-    private static void selectFlippedTexture(BlockPos pos, NativeImageBackedTexture nibt) {
-        Objects.requireNonNull(nibt);
-        Identifier id = OutsideCache.putFlippedNewIdentifierOrCached(pos, nibt);
+    private static void selectTexture(DimensionType dim, BlockPos pos) {
+        Objects.requireNonNull(dim);
+        Objects.requireNonNull(pos);
+        Identifier id = BuiltinPreciseCacheRepositories.NORMAL.findTextureIdentifier(dim, pos);
         selectTexturePure(id);
     }
 
@@ -168,46 +164,43 @@ public class SignBlockEntityRenderMixin {
             // always start with "#$"
             int confBegin = specs.indexOf("{");
             // SignPicturePorted.LOGGER.debug("conf start:" + confBegin);
-            String urlFlag = confBegin >= 0 ? specs.substring(2, confBegin) : specs.substring(2);
-            if (OutsideCache.invalidURL.contains(urlFlag)) {
+            String urlSpec = confBegin >= 0 ? specs.substring(2, confBegin) : specs.substring(2);
+            if (BuiltinPreciseCacheRepositories.INVALID_URL.contains(urlSpec)) {
                 return;
             }
 
             // String conf = confBegin >= 0 ? specs.substring(confBegin) : "";
             // SignPicturePorted.LOGGER.info("fragment:" + urlFlag);
 
-            final String url = urlFlag.startsWith("http://") || urlFlag.startsWith("https://")
-                    ? urlFlag
-                    : "https://" + urlFlag;
+            final String url = urlSpec.startsWith("http://") || urlSpec.startsWith("https://")
+                    ? urlSpec
+                    : "https://" + urlSpec;
             // SignPicturePorted.LOGGER.info(url);
             final Optional<URL> urlOpt = parseURL(url);
             // empty implies parsing was failed
-            if (!urlOpt.isPresent()) return;
+            if (urlOpt.isEmpty()) return;
             final URL url2 = urlOpt.get();
-            final NativeImage ni;
             {
                 final Supplier<NativeImageBackedTexture> fetch = () -> fetchFrom(url2, OptionalLong.empty())
                         .value()
                         .map(NativeImageBackedTexture::new)
                         .orElseGet(StaticNativeImage.errorImage::getValue);
-                if (!OutsideCache.sbp.contains(pos)) {
-                    SignPicturePorted.LOGGER.debug("fetch: {}", urlFlag);
+                if (BuiltinPreciseCacheRepositories.NORMAL.find(url2).isEmpty()) {
+                    SignPicturePorted.LOGGER.debug("fetch: {}", urlSpec);
+
                     // unsafeRunAsyncAndForget
                     CompletableFuture.supplyAsync(fetch)
-                            .thenAccept(x -> OutsideCache.put(pos, x, false));
-                    OutsideCache.sbp.add(pos);
-                }
-                final Supplier<NativeImageBackedTexture> loadSupplier = StaticNativeImage.loadingImage::getValue;
-                final ImageWrapper cacheEntry = OutsideCache.putOrCached(pos, loadSupplier);
-                final Optional<NativeImageBackedTexture> cache = Optional.ofNullable(cacheEntry.nibt.get());
-                final NativeImageBackedTexture nibt = cache.orElseGet(loadSupplier);
-                ni = nibt.getImage();
-                // SignPicturePorted.LOGGER.info("back(pos: " + pos + "): " + ni);
-                Objects.requireNonNull(ni);
-                if (nibt != null) {
-                    selectTexture(pos, nibt);
-                } else {
-                    return;
+                            .thenAccept(x -> {
+                                BuiltinPreciseCacheRepositories.NORMAL.register(
+                                        signBlockEntity.getPos(),
+                                        signBlockEntity.getWorld().getDimension(),
+                                        url2,
+                                        x
+                                );
+
+                                selectTexture(signBlockEntity.getWorld().getDimension(), pos);
+                            });
+
                 }
             }
             // NOTE テクスチャ向いてるほうがZ-
@@ -236,21 +229,9 @@ public class SignBlockEntityRenderMixin {
             // TODO set brightness
             drawImage(matrices);
 
-            // 左右反転したテクスチャを裏側に表示させる
-            {
-                Supplier<? extends NativeImageBackedTexture> ff =
-                        () -> new NativeImageBackedTexture(TextureFlipper.flipHorizontal(ni));
-                ImageWrapper cache2 = OutsideCache.putFlippedOrCached(pos, ff);
-                final Optional<NativeImageBackedTexture> cache12 = Optional.ofNullable(cache2.nibt.get());
-                final NativeImageBackedTexture nibt2 = cache12.orElseGet(ff);
-                if (nibt2 != null) {
-                    selectFlippedTexture(pos, nibt2);
-                }
-            }
-
             matrices.translate(scaleX, 0.0, 0.0);
             rotateByAxisY(matrices, 180);
-            drawImage(matrices);
+            drawFlippedImage(matrices);
 
             matrices.pop();
             // 元々のモデルを黙らせる
@@ -265,6 +246,13 @@ public class SignBlockEntityRenderMixin {
         // depth test resolves z-issue; avoiding invalid depth
         RenderSystem.enableDepthTest();
         DrawableHelper.drawTexture(matrices, 0, 0, 0, 0, 0, 1, 1, 1, 1);
+        RenderSystem.disableDepthTest();
+    }
+
+    private void drawFlippedImage(MatrixStack matrices) {
+        // depth test resolves z-issue; avoiding invalid depth
+        RenderSystem.enableDepthTest();
+        DrawableHelper.drawTexture(matrices, 0, 0, 0, -1.0F, -1.0F, 1, 1, 1, 1);
         RenderSystem.disableDepthTest();
     }
 

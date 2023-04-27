@@ -1,34 +1,23 @@
 package com.github.kisaragieffective.signpictureported.mixin;
 
-import com.github.kisaragieffective.signpictureported.StaticNativeImage;
-import com.github.kisaragieffective.signpictureported.OutsideCache;
-import com.github.kisaragieffective.signpictureported.ImageWrapper;
-import net.minecraft.client.texture.NativeImageBackedTexture;
+import com.github.kisaragieffective.signpictureported.internal.BuiltinPreciseCacheRepositories;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.dimension.DimensionType;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 @Mixin(World.class)
-public class BlockInvalidateMixin {
+public abstract class BlockInvalidateMixin {
+    @Shadow public abstract DimensionType getDimension();
+
     @Inject(method = "markDirty", at = @At("HEAD"))
     public void onBlockInvalidate(BlockPos pos, CallbackInfo ci) {
-        final ImageWrapper r2 = OutsideCache.cache.get(pos);
-        if (r2 == null) return;
-        final NativeImageBackedTexture nibt = r2.nibt.get();
-        final Set<? extends @NotNull NativeImageBackedTexture> excludedSet = new HashSet<>(Arrays.asList(
-                StaticNativeImage.errorImage.getValue(),
-                StaticNativeImage.loadingImage.getValue()
-        ));
-        if (nibt != null && excludedSet.stream().noneMatch(x -> x.equals(nibt))) {
-            OutsideCache.drop(pos);
-        }
+        final DimensionType dim = getDimension();
+
+        BuiltinPreciseCacheRepositories.NORMAL.releaseByBlockPos(dim, pos);
     }
 }
