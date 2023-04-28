@@ -227,11 +227,6 @@ public class SignBlockEntityRenderMixin {
             matrices.scale(scaleX, scaleY, 1.0F);
             // TODO set brightness
             drawImage(matrices);
-
-            matrices.translate(scaleX, 0.0, 0.0);
-            rotateByAxisY(matrices, 180);
-            drawFlippedImage(matrices);
-
             matrices.pop();
             // 元々のモデルを黙らせる
             defModelRender.cancel();
@@ -244,14 +239,9 @@ public class SignBlockEntityRenderMixin {
     private void drawImage(MatrixStack matrices) {
         // depth test resolves z-issue; avoiding invalid depth
         RenderSystem.enableDepthTest();
+        RenderSystem.disableCull();
         DrawableHelper.drawTexture(matrices, 0, 0, 0, 0, 0, 1, 1, 1, 1);
-        RenderSystem.disableDepthTest();
-    }
-
-    private void drawFlippedImage(MatrixStack matrices) {
-        // depth test resolves z-issue; avoiding invalid depth
-        RenderSystem.enableDepthTest();
-        DrawableHelper.drawTexture(matrices, 0, 0, 0, -1.0F, -1.0F, 1, 1, 1, 1);
+        RenderSystem.enableCull();
         RenderSystem.disableDepthTest();
     }
 
