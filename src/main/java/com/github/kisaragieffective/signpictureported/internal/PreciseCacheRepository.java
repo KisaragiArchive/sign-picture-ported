@@ -1,5 +1,6 @@
 package com.github.kisaragieffective.signpictureported.internal;
 
+import com.github.kisaragieffective.signpictureported.SignPicturePorted;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
@@ -31,6 +32,7 @@ public class PreciseCacheRepository {
     public void register(BlockPos pos, DimensionType dimension, URL source, NativeImageBackedTexture loaded) {
         final var texture = UniqueKeyed.allocate(loaded);
         Identifier newIdentifier = MinecraftClient.getInstance().getTextureManager().registerDynamicTexture("sgpc_reloaded", loaded);
+        SignPicturePorted.LOGGER.debug("new dynamic identifier was allocated: {}", newIdentifier);
         cacheByUrl.put(source, texture);
         cacheByIdentifier.put(newIdentifier, texture);
         cacheByPosition.put(new UniquePosition(dimension, pos), texture);
@@ -79,7 +81,7 @@ public class PreciseCacheRepository {
     }
 
     public void releaseByChunk(DimensionType dim, int chunkX, int chunkZ) {
-        cacheByPosition.entrySet().stream()
+        final var toBeRemoved = cacheByPosition.entrySet().stream()
                 .filter(x -> {
                     final var k = x.getKey();
 
@@ -88,21 +90,25 @@ public class PreciseCacheRepository {
                             chunkZ * 16 <= k.pos.getZ() && k.pos.getZ() < (chunkZ + 1) * 16;
                 })
                 .map(x -> x.getValue().data)
-                .forEach(this::release);
+                .toList();
+
+        toBeRemoved.forEach(this::release);
     }
 
     public void releaseByBlockPos(DimensionType dim, BlockPos pos) {
-        cacheByPosition.entrySet().stream()
+        final var toBeRemoved = cacheByPosition.entrySet().stream()
                 .filter(x -> {
                     final var k = x.getKey();
 
-                    return k.dimension == dim && k.pos.equals(pos);
+                    return k.dimension.equals(dim) && k.pos.equals(pos);
                 })
                 .map(x -> x.getValue().data)
-                .forEach(this::release);
+                .toList();
+
+        toBeRemoved.forEach(this::release);
     }
 
-    public void release(NativeImageBackedTexture nibt) {
+    private void release(NativeImageBackedTexture nibt) {
         cacheByPosition.entrySet().stream().filter(x -> x.getValue().data.equals(nibt)).forEach(x -> x.getValue().data.close());
         cacheByIdentifier.entrySet().stream().filter(x -> x.getValue().data.equals(nibt)).forEach(x -> x.getValue().data.close());
         cacheByUrl.entrySet().stream().filter(x -> x.getValue().data.equals(nibt)).forEach(x -> x.getValue().data.close());

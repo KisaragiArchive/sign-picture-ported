@@ -83,6 +83,7 @@ public class SignBlockEntityRenderMixin {
     }
 
     private static void selectTexturePure(Identifier id) {
+        SignPicturePorted.LOGGER.debug("select texture: {}", id);
         Objects.requireNonNull(
                 CLIENT.getTextureManager().getTexture(id), "TextureManager.getTexture"
         ).bindTexture();
@@ -185,20 +186,18 @@ public class SignBlockEntityRenderMixin {
                         .value()
                         .map(NativeImageBackedTexture::new)
                         .orElseGet(StaticNativeImage.errorImage::getValue);
+
                 if (BuiltinPreciseCacheRepositories.NORMAL.find(url2).isEmpty()) {
                     SignPicturePorted.LOGGER.debug("fetch: {}", urlSpec);
 
+                    final var dim = signBlockEntity.getWorld().getDimension();
                     // unsafeRunAsyncAndForget
                     CompletableFuture.supplyAsync(fetch)
                             .thenAccept(x -> {
-                                BuiltinPreciseCacheRepositories.NORMAL.register(
-                                        signBlockEntity.getPos(),
-                                        signBlockEntity.getWorld().getDimension(),
-                                        url2,
-                                        x
-                                );
-
-                                selectTexture(signBlockEntity.getWorld().getDimension(), pos);
+                                final var y = StaticNativeImage.errorImage;
+                                final var p = y.getValue();
+                                BuiltinPreciseCacheRepositories.NORMAL.register(pos, dim, url2, p);
+                                selectTexture(dim, pos);
                             });
 
                 }
